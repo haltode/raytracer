@@ -6,25 +6,7 @@
 \newcommand{\dimension}{1pt}
 \newcommand{\pixel}[1]{\color[RGB]{#1}{\rule{\dimension}{\dimension}}}
 
-\newcommand{\aspectratio}{\fpeval{16.0 / 9.0}}
-\newcommand{\width}{100}
-\newcommand{\height}{\fpeval{floor(\width / \aspectratio)}}
-
-\newcommand{\viewportheight}{2.0}
-\newcommand{\viewportwidth}{\fpeval{\aspectratio * \viewportheight}}
-\newcommand{\focal}{1.0}
-
-\newcommand{\origin}{(0,0,0)}
-\newcommand{\horizontal}{(\viewportwidth,0,0)}
-\newcommand{\vertical}{(0,\viewportheight,0)}
-
-% TODO: do not hard-code
-\newcommand{\lowerleftcorner}{(-1.7,-1.0,-1.0)}
-
-\newcommand{\world}{%
-    {(0,0,-1)(0.4)(1,0,0)},
-    {(-1,-0.5,-1)(0.2)(0,1,0)}%
-}
+\input{scene}
 
 % Global variables to detect ray hit on sphere
 \newcounter{hitsphere}

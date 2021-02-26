@@ -1,8 +1,6 @@
 TARGET=raytracer.pdf
 
-all: $(TARGET)
-
-%.pdf: %.tex
+$(TARGET): raytracer.tex scene.tex
 	xelatex $<
 
 clean:
