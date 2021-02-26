@@ -27,6 +27,15 @@
 \def\gety(#1,#2,#3){#2}
 \def\getz(#1,#2,#3){#3}
 
+% (#1) = point
+\def\torgbpixel(#1){%
+    \pixel{%
+        \fpeval{floor(255.0 * \getx(#1))},
+        \fpeval{floor(255.0 * \gety(#1))},
+        \fpeval{floor(255.0 * \getz(#1))}
+    }
+}
+
 % Vector functions
 % (#1) = vector, (#2) = other vector, #2 = scalar
 \def\vlength(#1){\fpeval{sqrt(\getx(#1) * \getx(#1) + \gety(#1) * \gety(#1) + \getz(#1) * \getz(#1))}}
@@ -35,6 +44,20 @@
 \def\vmulscalar(#1)#2{(\fpeval{\getx(#1) * #2},\fpeval{\gety(#1) * #2},\fpeval{\getz(#1) * #2})}
 \def\vdivscalar(#1)#2{(\fpeval{\getx(#1) / #2},\fpeval{\gety(#1) / #2},\fpeval{\getz(#1) / #2})}
 \def\vunit(#1){\expandafter{\vdivscalar(#1){\vlength(#1)}}}
+
+% #1 = ray origin (point), #2 = ray dir (vect), #3 = macro continuation
+\def\raycolor(#1)(#2)#3{%
+    \edef\unitdir{\fpeval{\vunit(#2)}}%
+    \edef\y{\fpeval{\expandafter\gety\unitdir}}%
+    \edef\t{\fpeval{0.5 * \y + 1.0}}%
+    \edef\mt{\fpeval{1.0 - \t}}%
+    \edef\va{\fpeval{\vmulscalar(1.0,1.0,1.0)\mt}}%
+    \edef\vb{\fpeval{\vmulscalar(0.5,0.7,1.0)\t}}%
+    % TODO: remove this tmp macro (why cannot expandafter without it? :/)
+    \edef\vtmp{\va\vb}%
+    \edef\ray{\fpeval{\expandafter\vadd\vtmp}}%
+    \expandafter#3\ray
+}
 
 % #1 = point
 \def\createpixel(#1){%
@@ -51,23 +74,8 @@
     \edef\vsumiii{\vsumii\origin}%
     \edef\raydir{\fpeval{\expandafter\vsub\vsumiii}}%
 
-    % TODO: split this into another macro with proper expansion
-    % raycolor(origin,raydir)
-    \edef\unitdir{\fpeval{\expandafter\vunit\raydir}}%
-    \edef\y{\fpeval{\expandafter\gety\unitdir}}%
-    \edef\t{\fpeval{0.5 * \y + 1.0}}%
-    \edef\mt{\fpeval{1.0 - \t}}%
-    \edef\va{\fpeval{\vmulscalar(1.0,1.0,1.0)\mt}}%
-    \edef\vb{\fpeval{\vmulscalar(0.5,0.7,1.0)\t}}%
-    % TODO: remove this tmp macro (why cannot expandafter without it? :/)
-    \edef\vtmp{\va\vb}%
-    \edef\ray{\fpeval{\expandafter\vadd\vtmp}}%
-
-    \pixel{%
-        \fpeval{floor(255.0 * \expandafter\getx\ray)},
-        \fpeval{floor(255.0 * \expandafter\gety\ray)},
-        \fpeval{floor(255.0 * \expandafter\getz\ray)}
-    }
+    \edef\rtmp{(0,0,0)\raydir}%
+    \expandafter\raycolor\rtmp\torgbpixel
 }
 
 \begin{document}
