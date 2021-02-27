@@ -6,11 +6,13 @@
 \newcommand{\dimension}{1pt}
 \newcommand{\pixel}[1]{\color[RGB]{#1}{\rule{\dimension}{\dimension}}}
 
+\newcommand{\infinity}{2147483647} % 2^31-1
+
 \input{scene}
 
 % Global variables to detect ray hit on sphere
 \newcounter{hitsphere}
-\setcounter{hitsphere}{0}
+\def\closestsphere{\infinity}
 \def\hitspherecolor{(0,0,0)}
 
 % 3D unpacking
@@ -53,15 +55,25 @@
     \edef\vv{\v\v}%
     \edef\c{\fpeval{\expandafter\vdot\vv - #4*#4}}%
     \edef\discriminant{\fpeval{\b*\b - 4.0*\a*\c}}%
-    \ifdim\dimexpr\discriminant pt>0pt%
-        \setcounter{hitsphere}{1}%
-        \global\edef\hitspherecolor{#5}%
+    \ifnum\fpeval{\discriminant>0}=1%
+        \edef\dist{\fpeval{%
+            min((-\b-sqrt(\discriminant))/(2.0*\a), (-\b+sqrt(\discriminant))/(2.0*\a))
+        }}%
+        \ifnum\fpeval{\dist>0}=1%
+            \setcounter{hitsphere}{1}%
+            % Choose the closest sphere to the camera
+            \ifnum\fpeval{\dist<\closestsphere}=1%
+                \global\edef\closestsphere{\dist}%
+                \global\edef\hitspherecolor{#5}%
+            \fi%
+        \fi%
     \fi%
 }
 
 % #1 = ray origin (point), #2 = ray dir (vect), #3 = macro continuation
 \def\raycolor(#1)(#2)#3{%
     \setcounter{hitsphere}{0}%
+    \global\edef\closestsphere{\infinity}%
     \foreach \sphere in \world {%
         \edef\param{%
             \noexpand(#1)\noexpand(#2)%
