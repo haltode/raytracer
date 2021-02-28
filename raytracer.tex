@@ -7,13 +7,14 @@
 \newcommand{\pixel}[1]{\color[RGB]{#1}{\rule{\dimension}{\dimension}}}
 
 \newcommand{\infinity}{2147483647} % 2^31-1
+\newcommand{\pii}{3.14159265}
 
 \input{scene}
 
 % Global variables to detect ray hit on sphere
-\newcounter{hitsphere}
+\newcounter{isspherehit}
 \def\closestsphere{\infinity}
-\def\hitspherecolor{(0,0,0)}
+\def\hitsphere{(0,0,0)(1)(0,0,0)}
 
 % 3D unpacking
 %% #1 = x, #2 = y, #3 = z
@@ -27,28 +28,62 @@
 \def\getsphereradius(#1)(#2)(#3){#2}
 \def\getspherecolors(#1)(#2)(#3){(#3)}
 
+% Light unpacking
+%% (#1) = direction (vector), (#2) = color (r, g, b), (#3) = intensity
+\def\getlightdir(#1)(#2)(#3){(#1)}
+\def\getlightcolor(#1)(#2)(#3){(#2)}
+\def\getlightintensity(#1)(#2)(#3){#3}
+
+\def\fpclamp#1{\fpeval{max(0.0, min(1.0, #1))}}
 % (#1) = point
 \def\torgbpixel(#1){%
-    \pixel{%
-        \fpeval{floor(255.0 * \getx(#1))},
-        \fpeval{floor(255.0 * \gety(#1))},
-        \fpeval{floor(255.0 * \getz(#1))}
-    }%
+    \edef\px{\expandafter\fpclamp\expandafter{\getx(#1)}}%
+    \edef\py{\expandafter\fpclamp\expandafter{\gety(#1)}}%
+    \edef\pz{\expandafter\fpclamp\expandafter{\getz(#1)}}%
+    \pixel{\fpeval{255.0*\px},\fpeval{255.0*\py},\fpeval{255.0*\pz}}%
 }
 
 % Vector functions
-% (#1) = vector, (#2) = other vector, #2 = scalar
+%% (#1) = vector, (#2) = other vector
+%%                 #2  = scalar
 \def\vlength(#1){\fpeval{sqrt(\getx(#1) * \getx(#1) + \gety(#1) * \gety(#1) + \getz(#1) * \getz(#1))}}
 \def\vadd(#1)(#2){(\fpeval{\getx(#1) + \getx(#2)},\fpeval{\gety(#1) + \gety(#2)},\fpeval{\getz(#1) + \getz(#2)})}
 \def\vsub(#1)(#2){(\fpeval{\getx(#1) - \getx(#2)},\fpeval{\gety(#1) - \gety(#2)},\fpeval{\getz(#1) - \getz(#2)})}
+\def\vmul(#1)(#2){(\fpeval{\getx(#1) * \getx(#2)},\fpeval{\gety(#1) * \gety(#2)},\fpeval{\getz(#1) * \getz(#2)})}
 \def\vmulscalar(#1)#2{(\fpeval{\getx(#1) * #2},\fpeval{\gety(#1) * #2},\fpeval{\getz(#1) * #2})}
 \def\vdivscalar(#1)#2{(\fpeval{\getx(#1) / #2},\fpeval{\gety(#1) / #2},\fpeval{\getz(#1) / #2})}
-\def\vunit(#1){\expandafter{\vdivscalar(#1){\vlength(#1)}}}
+\def\vunit(#1){\fpeval{(#1) / \vlength(#1)}}
 \def\vdot(#1)(#2){\fpeval{\getx(#1)*\getx(#2)+\gety(#1)*\gety(#2)+\getz(#1)*\getz(#2)}}
+\def\vinv(#1){(\fpeval{-\getx(#1)},\fpeval{-\gety(#1)},\fpeval{-\getz(#1)})}
+
+% (#1) = intersection point (sphere hit by ray)
+\def\calcspherecolor(#1){%
+    \edef\center{\expandafter\getspherecoords\hitsphere}%
+    \edef\param{(#1)\center}%
+    \edef\normal{\expandafter\vsub\param}%
+    \edef\normalu{\expandafter\vunit\normal}%
+    \edef\ldir{\expandafter\getlightdir\light}%
+    \edef\invldir{\expandafter\vinv\ldir}%
+    \edef\invldiru{\expandafter\vunit\invldir}%
+
+    \edef\vv{\normalu\invldiru}%
+    \edef\dv{\expandafter\vdot\vv}%
+    \edef\power{\fpeval{max(0.0,\dv) * \expandafter\getlightintensity\light}}%
+    % TODO: move albedo parameter to sphere material
+    \edef\rfltd{\fpeval{1.0 / \pii}}%
+
+    \edef\ppcolor{\expandafter\getspherecolors\hitsphere}%
+    \edef\lcolor{\expandafter\getlightcolor\light}%
+    \edef\vv{\ppcolor\lcolor}%
+    \edef\hl{\expandafter\vmul\vv}%
+    \edef\hlscalar{\fpeval{\power * \rfltd}}%
+    \edef\res{\expandafter\vmulscalar\hl\hlscalar}%
+    \expandafter\torgbpixel\res%
+}
 
 % #1 = ray origin (point), #2 = ray dir (vec), #3 = sphere center (point),
-% #4 = sphere radius, #5 = sphere color (rgb)
-\def\hitspherediscriminant(#1)(#2)(#3)#4#5{%
+% #4 = sphere radius, (#5) = sphere color (rgb)
+\def\checkspherehit(#1)(#2)(#3)#4(#5){%
     \edef\v{\fpeval{\vsub(#1)(#3)}}%
     \edef\a{\fpeval{\vdot(#2)(#2)}}%
     \edef\b{\fpeval{2.0 * \expandafter\vdot\v(#2)}}%
@@ -60,11 +95,11 @@
             min((-\b-sqrt(\discriminant))/(2.0*\a), (-\b+sqrt(\discriminant))/(2.0*\a))
         }}%
         \ifnum\fpeval{\dist>0}=1%
-            \setcounter{hitsphere}{1}%
+            \setcounter{isspherehit}{1}%
             % Choose the closest sphere to the camera
             \ifnum\fpeval{\dist<\closestsphere}=1%
                 \global\edef\closestsphere{\dist}%
-                \global\edef\hitspherecolor{#5}%
+                \global\edef\hitsphere{(#3)(#4)(#5)}%
             \fi%
         \fi%
     \fi%
@@ -72,19 +107,22 @@
 
 % #1 = ray origin (point), #2 = ray dir (vect), #3 = macro continuation
 \def\raycolor(#1)(#2)#3{%
-    \setcounter{hitsphere}{0}%
+    \setcounter{isspherehit}{0}%
     \global\edef\closestsphere{\infinity}%
     \foreach \sphere in \world {%
         \edef\param{%
             \noexpand(#1)\noexpand(#2)%
             \expandafter\getspherecoords\sphere%
             {\expandafter\getsphereradius\sphere}%
-            {\expandafter\getspherecolors\sphere}%
+            \expandafter\getspherecolors\sphere%
         }%
-        \expandafter\hitspherediscriminant\param%
+        \expandafter\checkspherehit\param%
     }%
-    \ifnum\value{hitsphere}=1%
-        \expandafter#3\hitspherecolor%
+    \ifnum\value{isspherehit}=1%
+        \edef\dirdist{\fpeval{\vmulscalar(#2)\closestsphere}}%
+        \edef\vv{(#1)\dirdist}%
+        \edef\hitpoint{\expandafter\vadd\vv}%
+        \expandafter\calcspherecolor\hitpoint%
     \else%
         \edef\unitdir{\fpeval{\vunit(#2)}}%
         \edef\y{\fpeval{\expandafter\gety\unitdir}}%
