@@ -23,13 +23,13 @@
 \def\getz(#1,#2,#3){#3}
 
 % Sphere unpacking
-%% (#1) = (x, y, z), (#2) = radius, (#3) = (r, g, b) colors
+%% (#1) = (x, y, z), (#2) = radius, (#3) = color (rgb)
 \def\getspherecoords(#1)(#2)(#3){(#1)}
 \def\getsphereradius(#1)(#2)(#3){#2}
 \def\getspherecolors(#1)(#2)(#3){(#3)}
 
 % Light unpacking
-%% (#1) = direction (vector), (#2) = color (r, g, b), (#3) = intensity
+%% (#1) = direction (vector), (#2) = color (rgb), (#3) = intensity
 \def\getlightdir(#1)(#2)(#3){(#1)}
 \def\getlightcolor(#1)(#2)(#3){(#2)}
 \def\getlightintensity(#1)(#2)(#3){#3}
@@ -57,25 +57,21 @@
 \def\vinv(#1){(\fpeval{-\getx(#1)},\fpeval{-\gety(#1)},\fpeval{-\getz(#1)})}
 
 % (#1) = intersection point (sphere hit by ray)
-\def\calcspherecolor(#1){%
+\def\drawspherecolor(#1){%
     \edef\center{\expandafter\getspherecoords\hitsphere}%
-    \edef\param{(#1)\center}%
-    \edef\normal{\expandafter\vsub\param}%
-    \edef\normalu{\expandafter\vunit\normal}%
+    \edef\args{(#1)\center}%
+    \edef\normal{\expandafter\expandafter\expandafter\vunit\expandafter\vsub\args}%
     \edef\ldir{\expandafter\getlightdir\light}%
-    \edef\invldir{\expandafter\vinv\ldir}%
-    \edef\invldiru{\expandafter\vunit\invldir}%
+    \edef\invldir{\expandafter\expandafter\expandafter\vunit\expandafter\vinv\ldir}%
 
-    \edef\vv{\normalu\invldiru}%
-    \edef\dv{\expandafter\vdot\vv}%
+    \edef\dv{\expandafter\expandafter\expandafter\vdot\expandafter\normal\invldir}%
     \edef\power{\fpeval{max(0.0,\dv) * \expandafter\getlightintensity\light}}%
     % TODO: move albedo parameter to sphere material
     \edef\rfltd{\fpeval{1.0 / \pii}}%
 
     \edef\ppcolor{\expandafter\getspherecolors\hitsphere}%
     \edef\lcolor{\expandafter\getlightcolor\light}%
-    \edef\vv{\ppcolor\lcolor}%
-    \edef\hl{\expandafter\vmul\vv}%
+    \edef\hl{\expandafter\expandafter\expandafter\vmul\expandafter\ppcolor\lcolor}%
     \edef\hlscalar{\fpeval{\power * \rfltd}}%
     \edef\res{\expandafter\vmulscalar\hl\hlscalar}%
     \expandafter\torgbpixel\res%
@@ -84,10 +80,10 @@
 % #1 = ray origin (point), #2 = ray dir (vec), #3 = sphere center (point),
 % #4 = sphere radius, (#5) = sphere color (rgb)
 \def\checkspherehit(#1)(#2)(#3)#4(#5){%
-    \edef\v{\fpeval{\vsub(#1)(#3)}}%
-    \edef\a{\fpeval{\vdot(#2)(#2)}}%
-    \edef\b{\fpeval{2.0 * \expandafter\vdot\v(#2)}}%
+    \edef\v{\vsub(#1)(#3)}%
     \edef\vv{\v\v}%
+    \edef\a{\vdot(#2)(#2)}%
+    \edef\b{\fpeval{2.0 * \expandafter\vdot\v(#2)}}%
     \edef\c{\fpeval{\expandafter\vdot\vv - #4*#4}}%
     \edef\discriminant{\fpeval{\b*\b - 4.0*\a*\c}}%
     \ifnum\fpeval{\discriminant>0}=1%
@@ -105,55 +101,53 @@
     \fi%
 }
 
-% #1 = ray origin (point), #2 = ray dir (vect), #3 = macro continuation
-\def\raycolor(#1)(#2)#3{%
+% #1 = ray origin (point), #2 = ray dir (vect)
+\def\drawraycolor(#1)(#2){%
     \setcounter{isspherehit}{0}%
     \global\edef\closestsphere{\infinity}%
     \foreach \sphere in \world {%
-        \edef\param{%
+        \edef\args{%
             \noexpand(#1)\noexpand(#2)%
             \expandafter\getspherecoords\sphere%
             {\expandafter\getsphereradius\sphere}%
             \expandafter\getspherecolors\sphere%
         }%
-        \expandafter\checkspherehit\param%
+        \expandafter\checkspherehit\args%
     }%
     \ifnum\value{isspherehit}=1%
         \edef\dirdist{\fpeval{\vmulscalar(#2)\closestsphere}}%
         \edef\vv{(#1)\dirdist}%
         \edef\hitpoint{\expandafter\vadd\vv}%
-        \expandafter\calcspherecolor\hitpoint%
+        \expandafter\drawspherecolor\hitpoint%
     \else%
-        \edef\unitdir{\fpeval{\vunit(#2)}}%
-        \edef\y{\fpeval{\expandafter\gety\unitdir}}%
-        \edef\t{\fpeval{0.5 * \y + 1.0}}%
+        % When no sphere hit, default to a blue sky
+        \edef\unitdir{\vunit(#2)}%
+        \edef\t{\fpeval{0.5 * \expandafter\gety\unitdir + 1.0}}%
         \edef\mt{\fpeval{1.0 - \t}}%
-        \edef\va{\fpeval{\vmulscalar(1.0,1.0,1.0)\mt}}%
-        \edef\vb{\fpeval{\vmulscalar(0.5,0.7,1.0)\t}}%
-        % TODO: remove this tmp macro (why cannot expandafter without it? :/)
-        \edef\vtmp{\va\vb}%
-        \edef\ray{\fpeval{\expandafter\vadd\vtmp}}%
-        \expandafter#3\ray%
+        \edef\va{\vmulscalar(1.0,1.0,1.0)\mt}%
+        \edef\vb{\vmulscalar(0.5,0.7,1.0)\t}%
+        \edef\sky{\expandafter\expandafter\expandafter\vadd\expandafter\va\vb}%
+        \expandafter\torgbpixel\sky%
     \fi%
 }
 
-% #1 = point
+% #1 = point (x,y,z)
 \def\createpixel(#1){%
-    \edef\u{\fpeval{\getx(#1)/(\width - 1)}}%
-    \edef\v{\fpeval{\gety(#1)/(\height - 1)}}%
+    \edef\u{\fpeval{\getx(#1) / (\width - 1)}}%
+    \edef\v{\fpeval{\gety(#1) / (\height - 1)}}%
 
-    \edef\uh{\fpeval{\expandafter\vmulscalar\horizontal\u}}%
-    \edef\vv{\fpeval{\expandafter\vmulscalar\vertical\v}}%
+    \edef\uh{\expandafter\vmulscalar\horizontal\u}%
+    \edef\vv{\expandafter\vmulscalar\vertical\v}%
 
-    \edef\vsumi{\lowerleftcorner\uh}%
-    \edef\vsumi{\fpeval{\expandafter\vadd\vsumi}}%
-    \edef\vsumii{\vsumi\vv}%
-    \edef\vsumii{\fpeval{\expandafter\vadd\vsumii}}%
-    \edef\vsumiii{\vsumii\origin}%
-    \edef\raydir{\fpeval{\expandafter\vsub\vsumiii}}%
+    \edef\sum{\expandafter\expandafter\expandafter\vadd\expandafter\lowerleftcorner\uh}%
+    \edef\sum{\expandafter\expandafter\expandafter\vadd\expandafter\sum\vv}%
+    \edef\sum{\expandafter\expandafter\expandafter\vsub\expandafter\sum\origin}%
 
-    \edef\rtmp{\origin\raydir}%
-    \expandafter\raycolor\rtmp\torgbpixel%
+    \edef\rayori{\origin}%
+    \edef\raydir{\sum}%
+    \edef\ray{\rayori\raydir}%
+
+    \expandafter\drawraycolor\ray%
 }
 
 \begin{document}
