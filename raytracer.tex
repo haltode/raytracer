@@ -132,6 +132,9 @@
     \fi%
 }
 
+\edef\lowerleftcorner{%
+    \fpeval{\origin - \horizontal/2 - \vertical/2 - (0,0,\focal)}%
+}
 % #1 = point (x,y,z)
 \def\createpixel(#1){%
     \edef\u{\fpeval{\getx(#1) / (\width - 1)}}%
