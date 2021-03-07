@@ -14,8 +14,8 @@
 
 % Global variables to detect ray hit on sphere
 \newcounter{isspherehit}
-\def\closestsphere{\infinity}
-\def\hitsphere{(0,0,0)(1)(0,0,0)}
+\def\closestsphere{}
+\def\hitsphere{}
 
 % 3D unpacking
 %% #1 = x, #2 = y, #3 = z
@@ -24,10 +24,11 @@
 \def\getz(#1,#2,#3){#3}
 
 % Sphere unpacking
-%% (#1) = (x, y, z), (#2) = radius, (#3) = color (rgb)
-\def\getspherecoords(#1)(#2)(#3){(#1)}
-\def\getsphereradius(#1)(#2)(#3){#2}
-\def\getspherecolors(#1)(#2)(#3){(#3)}
+%% (#1) = (x, y, z), (#2) = radius, (#3) = material name, (#4) = material args
+\def\getspherecoords(#1)(#2)(#3)(#4){(#1)}
+\def\getsphereradius(#1)(#2)(#3)(#4){#2}
+\def\getspherematerialname(#1)(#2)(#3)(#4){#3}
+\def\getspherematerialargs(#1)(#2)(#3)(#4){#4}
 
 % Light unpacking
 %% (#1) = direction (vector), (#2) = color (rgb), (#3) = intensity
@@ -59,6 +60,17 @@
 
 % (#1) = intersection point (sphere hit by ray)
 \def\drawspherecolor(#1){%
+    \edef\matname{\expandafter\getspherematerialname\hitsphere}%
+    \edef\matargs{\expandafter\getspherematerialargs\hitsphere}%
+
+    % Dynamic dispatch depending on sphere material
+    \def\fn{\csname drawspherecolor\matname\endcsname}%
+    \edef\args{(#1)\matargs}%
+    \expandafter\fn\args%
+}
+
+% (#1) = intersection point (sphere hit by ray), (#2) = color (rgb), (#3) = albedo
+\def\drawspherecolorlambertian(#1)(#2)(#3){%
     \edef\center{\expandafter\getspherecoords\hitsphere}%
     \edef\args{(#1)\center}%
     \edef\normal{\expandafter\expandafter\expandafter\vunit\expandafter\vsub\args}%
@@ -67,10 +79,9 @@
 
     \edef\dv{\expandafter\expandafter\expandafter\vdot\expandafter\normal\invldir}%
     \edef\power{\fpeval{max(0.0,\dv) * \expandafter\getlightintensity\light}}%
-    % TODO: move albedo parameter to sphere material
-    \edef\rfltd{\fpeval{1.0 / \pii}}%
+    \edef\rfltd{\fpeval{(#3) / \pii}}%
 
-    \edef\ppcolor{\expandafter\getspherecolors\hitsphere}%
+    \edef\ppcolor{(#2)}%
     \edef\lcolor{\expandafter\getlightcolor\light}%
     \edef\hl{\expandafter\expandafter\expandafter\vmul\expandafter\ppcolor\lcolor}%
     \edef\hlscalar{\fpeval{\power * \rfltd}}%
@@ -78,14 +89,16 @@
     \expandafter\torgbpixel\res%
 }
 
-% #1 = ray origin (point), #2 = ray dir (vec), #3 = sphere center (point),
-% #4 = sphere radius, (#5) = sphere color (rgb)
-\def\checkspherehit(#1)(#2)(#3)#4(#5){%
-    \edef\v{\vsub(#1)(#3)}%
+% #1 = ray origin (point), #2 = ray dir (vec), #3 = sphere
+\def\checkspherehit(#1)(#2)#3{%
+    \edef\coords{\expandafter\getspherecoords#3}%
+    \edef\radius{\expandafter\getsphereradius#3}%
+    \edef\tmp{(#1)\coords}%
+    \edef\v{\expandafter\vsub\tmp}%
     \edef\vv{\v\v}%
     \edef\a{\vdot(#2)(#2)}%
     \edef\b{\fpeval{2.0 * \expandafter\vdot\v(#2)}}%
-    \edef\c{\fpeval{\expandafter\vdot\vv - #4*#4}}%
+    \edef\c{\fpeval{\expandafter\vdot\vv - \radius*\radius}}%
     \edef\discriminant{\fpeval{\b*\b - 4.0*\a*\c}}%
     \ifnum\fpeval{\discriminant>0}=1%
         \edef\dist{\fpeval{%
@@ -96,7 +109,7 @@
             % Choose the closest sphere to the camera
             \ifnum\fpeval{\dist<\closestsphere}=1%
                 \global\edef\closestsphere{\dist}%
-                \global\edef\hitsphere{(#3)(#4)(#5)}%
+                \global\edef\hitsphere{#3}%
             \fi%
         \fi%
     \fi%
@@ -107,12 +120,7 @@
     \setcounter{isspherehit}{0}%
     \global\edef\closestsphere{\infinity}%
     \foreach \sphere in \world {%
-        \edef\args{%
-            \noexpand(#1)\noexpand(#2)%
-            \expandafter\getspherecoords\sphere%
-            {\expandafter\getsphereradius\sphere}%
-            \expandafter\getspherecolors\sphere%
-        }%
+        \edef\args{\noexpand(#1)\noexpand(#2){\sphere}}%
         \expandafter\checkspherehit\args%
     }%
     \ifnum\value{isspherehit}=1%
