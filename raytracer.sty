@@ -1,16 +1,34 @@
 % SPDX-License-Identifier: GPL-3.0-or-later
-\documentclass{standalone}
-\usepackage{color}
-\usepackage{pgffor}
-\usepackage{xfp}
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{raytracer}[2021/11/26 1.0.0 An experimental raytracer in LaTeX]
 
-\newcommand{\dimension}{1pt}
-\newcommand{\pixel}[1]{\color[RGB]{#1}{\rule{\dimension}{\dimension}}}
+\RequirePackage{color}
+\RequirePackage{pgffor}
+\RequirePackage{xfp}
 
 \newcommand{\infinity}{2147483647} % 2^31-1
 \newcommand{\pii}{3.14159265}
 
-\input{scene}
+\newcommand{\dimension}{1pt}
+\newcommand{\pixel}[1]{\color[RGB]{#1}{\rule{\dimension}{\dimension}}}
+
+\newcommand{\aspectratio}{\fpeval{16.0 / 9.0}}
+\newcommand{\viewportheight}{2.0}
+\newcommand{\viewportwidth}{\fpeval{\aspectratio * \viewportheight}}
+\newcommand{\focal}{1.0}
+
+\newcommand{\origin}{(0,0,0)}
+\newcommand{\horizontal}{(\viewportwidth,0,0)}
+\newcommand{\vertical}{(0,\viewportheight,0)}
+
+% User input arguments for the \rayimg command
+% TODO: add more parameters such as \aspectratio or \origin
+%% \world is a list of spheres defined as: (center point)(radius)(material)
+%% Supported list of materials:
+%%% - lambertian: (rgb color)(albedo)
+\def\world{}
+%% \light is defined as: (direction vector)(rgb color)(intensity)
+\def\light{}
 
 % Global variables to detect ray hit on sphere
 \newcounter{isspherehit}
@@ -162,15 +180,23 @@
     \expandafter\drawraycolor\ray%
 }
 
-\begin{document}
+% Main command to render the image
+% [width (default=200)]{world}{light}
+\newcommand{\rayimg}[3][200]{%
+    %% Scene definition
+    \global\edef\width{#1}%
+    \global\edef\height{\fpeval{floor(\width / \aspectratio)}}%
+    \global\edef\world{#2}%
+    \global\edef\light{#3}%
+    %% Render the image
+    \unitlength=\dimension%
+    \begin{picture}(\width,\height)%
+        \foreach \x in {0,...,\inteval{\width - 1}}{%
+            \foreach \y in {0,...,\inteval{\height - 1}}{%
+                \put(\x,\y){\createpixel(\x,\y,0)}%
+            }%
+        }%
+    \end{picture}%
+}
 
-\unitlength=\dimension
-\begin{picture}(\width,\height)
-    \foreach \x in {0,...,\inteval{\width - 1}}{%
-        \foreach \y in {0,...,\inteval{\height - 1}}{%
-            \put(\x,\y){\createpixel(\x,\y,0)}%
-        }
-    }
-\end{picture}
-
-\end{document}
+\endinput

@@ -1,9 +1,12 @@
-TARGET=raytracer.pdf
-
-$(TARGET): raytracer.tex scene.tex
-	xelatex $<
-
-clean:
-	$(RM) $(TARGET)
+SRC = example.tex
+PDF = example.pdf
 
 .PHONY: all clean
+
+all: $(PDF)
+
+$(PDF): $(SRC)
+	xelatex $^
+
+clean:
+	$(RM) $(PDF)
