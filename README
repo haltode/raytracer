@@ -6,8 +6,3 @@ had a LaTeX book next to me so... yeah.
 
 Warning, the compilation time is *very* slow, for a 200x355 image it took around
 8 minutes on my laptop.
-
-TODO:
-
-- Move code into a LaTeX custom package to be able to create many scenes easily
-- Support reflection
