@@ -25,6 +25,7 @@
 % TODO: add more parameters such as \aspectratio or \origin
 %% \world is a list of spheres defined as: (center point)(radius)(material)
 %% Supported list of materials:
+%%% - raw: (rgb color)
 %%% - lambertian: (rgb color)(albedo)
 \def\world{}
 %% \light is defined as: (direction vector)(rgb color)(intensity)
@@ -85,6 +86,12 @@
     \def\fn{\csname drawspherecolor\matname\endcsname}%
     \edef\args{(#1)\matargs}%
     \expandafter\fn\args%
+}
+
+% (#1) = intersection point (sphere hit by ray), (#2) = color (rgb)
+\def\drawspherecolorraw(#1)(#2){%
+    % Raw material ignores lighting
+    \torgbpixel(#2)%
 }
 
 % (#1) = intersection point (sphere hit by ray), (#2) = color (rgb), (#3) = albedo
