@@ -6,20 +6,20 @@
 \RequirePackage{pgffor}
 \RequirePackage{xfp}
 
-\newcommand{\infinity}{2147483647} % 2^31-1
-\newcommand{\pii}{3.14159265}
+\def\infinity{2147483647} % 2^31-1
+\def\pii{3.14159265}
 
-\newcommand{\dimension}{1pt}
-\newcommand{\pixel}[1]{\color[RGB]{#1}{\rule{\dimension}{\dimension}}}
+\def\dimension{1pt}
+\def\pixel#1{\color[RGB]{#1}{\rule{\dimension}{\dimension}}}
 
-\newcommand{\aspectratio}{\fpeval{16.0 / 9.0}}
-\newcommand{\viewportheight}{2.0}
-\newcommand{\viewportwidth}{\fpeval{\aspectratio * \viewportheight}}
-\newcommand{\focal}{1.0}
+\edef\aspectratio{\fpeval{16.0 / 9.0}}
+\edef\viewportheight{2.0}
+\edef\viewportwidth{\fpeval{\aspectratio * \viewportheight}}
+\edef\focal{1.0}
 
-\newcommand{\origin}{(0,0,0)}
-\newcommand{\horizontal}{(\viewportwidth,0,0)}
-\newcommand{\vertical}{(0,\viewportheight,0)}
+\edef\origin{(0,0,0)}
+\edef\horizontal{(\viewportwidth,0,0)}
+\edef\vertical{(0,\viewportheight,0)}
 
 % User input arguments for the \rayimg command
 % TODO: add more parameters such as \aspectratio or \origin
